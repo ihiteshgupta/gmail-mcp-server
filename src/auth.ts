@@ -13,7 +13,7 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.labels",
 ];
 
-const CONFIG_DIR = path.join(
+const CONFIG_DIR = process.env.GMAIL_MCP_CONFIG_DIR || path.join(
   process.env.HOME || process.env.USERPROFILE || ".",
   ".gmail-mcp"
 );
