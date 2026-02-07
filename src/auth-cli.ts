@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { authenticateInteractive, isAuthenticated, getConfigDir } from "./auth.js";
+import { authenticateInteractive, authenticateHeadless, isAuthenticated, getConfigDir } from "./auth.js";
 
 async function main() {
   console.log("Gmail MCP Server - Authentication");
@@ -15,8 +15,16 @@ async function main() {
     return;
   }
 
+  // Check if running in headless mode
+  const isHeadless = process.env.HEADLESS === "true" || process.argv.includes("--headless");
+
   try {
-    await authenticateInteractive();
+    if (isHeadless) {
+      console.log("Running in headless mode (no browser available)\n");
+      await authenticateHeadless();
+    } else {
+      await authenticateInteractive();
+    }
     console.log("\nAuthentication complete! You can now use the Gmail MCP server.");
   } catch (error) {
     console.error("\nAuthentication failed:", error);

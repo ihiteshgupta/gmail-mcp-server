@@ -115,6 +115,52 @@ export async function getAuthenticatedClient(): Promise<OAuth2Client | null> {
   return null;
 }
 
+export async function authenticateHeadless(): Promise<OAuth2Client> {
+  const credentials = loadCredentials();
+  if (!credentials) {
+    throw new Error(
+      `Credentials not found. Please place your credentials.json in ${CREDENTIALS_PATH}`
+    );
+  }
+
+  const oauth2Client = createOAuth2Client(credentials);
+
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: SCOPES,
+    prompt: "consent",
+  });
+
+  console.log("\n=== Headless Authentication Mode ===");
+  console.log("\n1. Open this URL in a browser (on any machine):\n");
+  console.log(authUrl);
+  console.log("\n2. After authorization, you will be redirected to a URL like:");
+  console.log("   http://localhost:3000/oauth2callback?code=XXXX&scope=...");
+  console.log("\n3. Copy the 'code' parameter value from the URL");
+  console.log("   (the long string after 'code=')\n");
+
+  // Read code from stdin
+  const readline = await import("readline");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const code = await new Promise<string>((resolve) => {
+    rl.question("Enter the authorization code: ", (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+
+  const { tokens } = await oauth2Client.getToken(code);
+  oauth2Client.setCredentials(tokens);
+  saveToken(tokens);
+
+  console.log("\nAuthentication successful! Token saved.");
+  return oauth2Client;
+}
+
 export async function authenticateInteractive(): Promise<OAuth2Client> {
   const credentials = loadCredentials();
   if (!credentials) {

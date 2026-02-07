@@ -48,8 +48,12 @@ npm run build
 mkdir -p ~/.gmail-mcp
 cp /path/to/downloaded-credentials.json ~/.gmail-mcp/credentials.json
 
-# Authenticate (opens browser)
+# Authenticate
+# For desktop (opens browser automatically):
 npm run auth
+
+# For headless server (manual code entry):
+npm run auth:headless
 ```
 
 ### 4. Register with Claude Code
@@ -127,14 +131,21 @@ from:client@example.com has:attachment after:2024/06/01
 
 **"Not authenticated" error:**
 ```bash
+# Desktop (with browser):
 npm run auth
+
+# Headless server (no browser):
+npm run auth:headless
 ```
 
 **"Credentials not found" error:**
 Ensure `credentials.json` is in `~/.gmail-mcp/`
 
 **Token expired:**
-Delete `~/.gmail-mcp/token.json` and run `npm run auth` again
+Delete `~/.gmail-mcp/token.json` and run `npm run auth` (or `npm run auth:headless`) again
+
+**Running on headless server:**
+Use `npm run auth:headless`, copy the URL to a browser on any machine, then paste the authorization code from the redirect URL
 
 ## Security Notes
 
