@@ -75,8 +75,54 @@ label:work                # Has label
 - Credentials: `~/.gmail-mcp/credentials.json`
 - Auth token: `~/.gmail-mcp/token.json`
 
+## Development Commands
+
+```bash
+npm run build        # Compile TypeScript (tsc)
+npm run dev          # Build + run server (tsc && node dist/index.js)
+npm start            # Run compiled server (node dist/index.js)
+npm run auth         # Interactive OAuth flow (opens browser, saves token)
+```
+
+No test framework is configured. Manual testing via Claude Code MCP integration.
+
+## Architecture
+
+### Server Pattern
+- **Entry point**: `src/index.ts` -- MCP server with stdio transport
+- **API client**: `src/gmail.ts` -- `GmailClient` class wrapping `googleapis` Gmail v1 SDK
+- **Auth layer**: `src/auth.ts` -- OAuth2 credential/token management, token auto-refresh
+- **Auth CLI**: `src/auth-cli.ts` -- Interactive browser-based OAuth flow (local HTTP callback server on port 3000)
+
+### Request Flow
+1. `index.ts` registers `ListToolsRequest` and `CallToolRequest` handlers
+2. Tool calls go through `ensureClient()` which lazy-initializes the `GmailClient` (loads credentials + token, refreshes if expired)
+3. Each tool case in the `switch` delegates to `GmailClient` methods
+4. Results returned as `{ content: [{ type: "text", text: JSON.stringify(result) }] }`
+5. Errors caught at the top-level try/catch, returned with `isError: true`
+
+### Email Body Parsing
+`getMessageContent()` in `gmail.ts` extracts body from MIME parts: prefers `text/plain`, falls back to `text/html`, handles both single-part and multipart messages.
+
+### Email Composition
+`sendEmail()` constructs raw RFC 2822 messages with MIME boundaries for attachments, base64url-encodes them for the Gmail API.
+
+## Conventions
+
+- TypeScript with ES modules (`"type": "module"` in package.json)
+- All Gmail API calls use `userId: "me"` (authenticated user)
+- Tool definitions are inline objects in `index.ts` with `as const` type assertions on schema types
+- Tool arguments are cast with `as { ... }` inline type assertions (no zod/validation library)
+- Config directory: `~/.gmail-mcp/` (overridable via `GMAIL_MCP_CONFIG_DIR` env var)
+- Token auto-refresh: checks `expiry_date` and calls `refreshAccessToken()` transparently
+- Success messages for mutating operations return human-readable strings (e.g., "Email sent successfully")
+- Read operations return `JSON.stringify(result, null, 2)` for structured data
+- No runtime dependencies beyond MCP SDK and googleapis
+- Diagnostic logs go to `console.error` (stderr), keeping stdout clean for MCP stdio transport
+
 ## Key Files
 
-- `src/index.ts` - MCP server and tool definitions
-- `src/gmail.ts` - Gmail API client
-- `src/auth.ts` / `src/auth-cli.ts` - OAuth authentication
+- `src/index.ts` - MCP server, tool definitions, and request routing (single switch statement)
+- `src/gmail.ts` - `GmailClient` class: all Gmail API operations (search, send, drafts, labels, threads, attachments)
+- `src/auth.ts` - OAuth2 credential loading, token persistence, auto-refresh, config dir management
+- `src/auth-cli.ts` - Interactive authentication CLI (browser OAuth + local callback server)
